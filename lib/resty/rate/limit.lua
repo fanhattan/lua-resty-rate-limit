@@ -81,6 +81,8 @@ function _M.limit(config)
 
             config.redis_config = redis_config
             config.connection = redis_connection
+
+            response_config = config.response or {}
         end
 
         local current_time = ngx.now()
@@ -103,8 +105,13 @@ function _M.limit(config)
 
             ngx.header["Content-Type"] = "application/json; charset=utf-8"
             ngx.header["Retry-After"] = retry_after
-            ngx.status = 429
-            ngx.say('{"status_code":25,"status_message":"Your request count (' .. response.count .. ') is over the allowed limit of ' .. rate .. '."}')
+            ngx.status = response_config.status or 429
+            if response_config.body then
+              ngx.say(response_config.body(response.count, rate))
+            else
+              ngx.say('{"status_code":25,"status_message":"Your request count (' .. response.count .. ') is over the allowed limit of ' .. rate .. '."}')
+            end
+
             ngx.exit(ngx.HTTP_OK)
         else
             ngx.header["X-RateLimit-Limit"] = rate
